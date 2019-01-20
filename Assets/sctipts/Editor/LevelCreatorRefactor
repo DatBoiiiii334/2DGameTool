@@ -1,0 +1,141 @@
+using UnityEngine;
+using UnityEditor;
+
+public class LevelCreator : EditorWindow {
+
+	private GUIStyle buttonStyle;
+
+	public Texture2D mapToGenerate = null;
+	public ColorToPrefab [] colorMappings;
+	public bool Kill = false;
+	public Color color;
+
+	public GameObject Generator;
+	public GameObject LevelSpawner;
+
+
+	[MenuItem ("Tool/LevelGenerator")]
+	public static void Init () {    
+		GetWindow<LevelCreator> ("PrecisionGenerator");
+	}
+
+	private void WindowSetup () {
+		//Fortnite GUI Button Skins
+		buttonStyle = new GUIStyle (GUI.skin.button);
+		buttonStyle.hover.textColor = Color.red;
+		buttonStyle.normal.textColor = Color.red;
+		buttonStyle.active.textColor = Color.green;
+		//style.fontSize = 18;
+	}
+
+	private void OnGenerateLevel () {
+		if (mapToGenerate == null) {
+			if (Help.HasHelpForObject (mapToGenerate))
+				Help.ShowHelpForObject (mapToGenerate);
+			ShowNotification (new GUIContent ("No Map selected"));
+			return;
+		}
+		else if (Generator == null) {
+			if (Help.HasHelpForObject (Generator))
+				Help.ShowHelpForObject (Generator);
+			ShowNotification (new GUIContent ("No Prefab selected"));
+			return;
+		}
+		else if (LevelSpawner == null) {
+			if (Help.HasHelpForObject (LevelSpawner))
+				Help.ShowHelpForObject (LevelSpawner);
+			ShowNotification (new GUIContent ("No Spawn object selected"));
+			return;
+		}
+
+		for (int x = 0; x < mapToGenerate.width; x++) {
+			for (int y = 0; y < mapToGenerate.height; y++) {
+				GenerateTile (x, y);
+			}
+		}
+	}
+
+	private void OnGUI () {
+		if (buttonStyle == null)
+			WindowSetup ();
+
+		if (colorMappings != null) {
+			EditorGUILayout.BeginVertical ();
+			for (int x = 0; x < colorMappings.Length; x++) {
+				colorMappings [x].prefab = (GameObject) EditorGUILayout.ObjectField ("GameObject", colorMappings [x].prefab, typeof (GameObject), true);
+			}
+			EditorGUILayout.EndVertical ();
+		}
+
+		//Mapje
+		GUILayout.Space (20);
+		GUILayout.Label ("Please select your map", EditorStyles.boldLabel);
+		GUILayout.BeginHorizontal ();
+		GUILayout.Label ("Map");
+		mapToGenerate = (Texture2D) EditorGUILayout.ObjectField (mapToGenerate, typeof (Texture2D), true);
+		GUILayout.EndHorizontal ();
+
+		//LevelSpawner
+		GUILayout.Space (20);
+		GUILayout.Label ("Now insert the spawner", EditorStyles.boldLabel);
+		GUILayout.BeginHorizontal ();
+		GUILayout.Label ("LevelSpawn");
+		Generator = (GameObject) EditorGUILayout.ObjectField (Generator, typeof (GameObject), true);
+		GUILayout.EndHorizontal ();
+
+		GUILayout.Space (70);
+
+		if (GUILayout.Button ("Insert prefabs", GUILayout.Width (130))) {
+			ScriptableWizard.DisplayWizard<WizardTest> ("I am wizard", "Create", "Apply");
+			Debug.Log ("Wizard Summoned");
+		}
+
+		GUILayout.Space (20);
+		// Generate Level Button
+		GUILayout.BeginHorizontal ();
+		if (GUILayout.Button ("Generate Level", GUILayout.Width (100))) {
+			OnGenerateLevel ();
+		}
+
+		// Delete Level Button
+		if (GUILayout.Button ("Delete prefabs", buttonStyle, GUILayout.Width (100))) {
+			Wipe ();
+		}
+		GUILayout.EndHorizontal ();
+	}
+
+	public void KillButton () {
+		Kill = false;
+	}
+
+	void Update () { //Dit wordt niet aangeroepen; er is geen update in editor
+		if (Kill == true) {
+			Wipe ();
+
+		}
+	}
+
+
+	[ContextMenu ("Kill Kids")]
+	public void Wipe () {
+		int childs = Generator.transform.childCount;
+		for (int i = childs - 1; i >= 0; i--) {
+			GameObject.DestroyImmediate (Generator.transform.GetChild (i).gameObject);
+		}
+	}
+
+	private void GenerateTile (int x, int y) {
+		Color pixelColor = mapToGenerate.GetPixel (x, y);
+
+		if (pixelColor.a == 0) {
+			return;
+		}
+		if (color.Equals (pixelColor)) {
+			Vector2 position = new Vector2 (x, y);
+			PrefabUtility.InstantiatePrefab (Generator);
+			GameObject temp = Instantiate (LevelSpawner, position, Quaternion.identity);
+			temp.transform.parent = Generator.transform;
+		}
+	}
+
+}
